@@ -88,6 +88,7 @@ class Puzzle:
 		while(i < moves):
 			random.shuffle(self.directions[size - 2]) #first list in directions has moves for 2D
 			move = self.directions[size - 2][0]
+			print(move)
 			#move = 'up'
 			idxTile = {}
 			idxTile = self.findEmptyTile(self.curstate)
@@ -124,6 +125,8 @@ class Puzzle:
 			i += 1
 
 		self.initial = copy.deepcopy(self.curstate)
+		print("i")
+		print(i)
 
 	def PrintState(self, state):
 		for z in state: #for now
@@ -136,16 +139,74 @@ class Puzzle:
 			return 0;
 
 	def frontierNodes(self, actions, parent, path_cost, depth):
-		print("in frontier path cost")
-		print(path_cost)
 		fn = []
 		for a in actions:
 			self.curstate = copy.deepcopy(parent)
-			print("before calling createNode")
 			fn.append(self.createNode(parent, a, path_cost, depth))
 
 		return fn
- 
+
+	def DisplacedTilesH(self, node):
+		cnt = 0
+
+		for z in range(self.size):
+			for y in range(self.size):
+				for x in range(self.size):
+					if node.state[z][x][y] != self.goal[z][x][y]:
+						cnt += 1
+
+		return cnt
+
+	def ManhattanDistanceH(self, node):
+		md = 0
+		for z in range(self.size):
+			for y in range(self.size):
+				for x in range(self.size):
+					if node.state[z][x][y] != self.goal[z][x][y]:
+						md +=  
+
+
+
+	def BFS(self, parent):
+		closed_list = []
+		queue = []
+		path_cost = 0
+
+		queue.append(parent)
+
+		while queue: #while queue not empty
+			print(path_cost)
+			closed_list.append(parent)
+			if self.testGoal(parent.state):
+				print("Goal reached by BFS")
+				self.PrintState(parent.state)
+				print("nodes visited")
+				print(path_cost)
+				return parent
+			else:
+				path_cost += 1 
+				actions = self.frontierActions(parent.state) #generate possible actions from parent
+				frontier = self.frontierNodes(actions, parent.state, path_cost, path_cost) #check parent to avoid loops
+				for n in frontier:
+					if n not in closed_list:
+						queue.append(n)
+				if queue:
+					parent = copy.deepcopy(queue[0])
+					queue.remove(queue[0])
+		'''
+		print("last parent")
+		self.PrintState(parent.state)
+		actions = copy.deepcopy(self.frontierActions(parent.state)) #generate possible actions from parent
+		print("possible actions for last parent")
+		print(actions)
+		frontier = copy.deepcopy(self.frontierNodes(actions, parent.state, path_cost, path_cost)) #check parent to avoid loops
+		print("possible children of last parent")
+		for n in frontier:
+			self.PrintState(n.state)
+
+		print("not goal. path_cost")
+		print(path_cost)'''
+
 	def DFS(self, parent, stack, closed_list, path_cost):
 
 		#general search algo 
@@ -176,8 +237,8 @@ class Puzzle:
 
 		#recursive algo
 		else:
-			actions = self.frontierActions(parent.state) #generate possible actions from parent
-			frontier = self.frontierNodes(actions, parent.state, path_cost, path_cost) #check parent to avoid loops
+			actions = copy.deepcopy(self.frontierActions(parent.state))#generate possible actions from parent
+			frontier = copy.deepcopy(self.frontierNodes(actions, parent.state, path_cost, path_cost)) #check parent to avoid loops
 			print("parent: ")
 			self.PrintState(parent.state)
 			print("children: ")
@@ -202,17 +263,24 @@ class Puzzle:
 		removals = {'x0': 'left', 'x2': 'right', 'x3': 'right', 
 					'y0': 'front', 'y2' : 'back', 'y3': 'back',
 					'z0' : 'down', 'z2': 'up', 'z3' : 'up'}
-		possibleActions  = self.directions[self.size - 2]
+		possibleActions  = copy.deepcopy(self.directions[self.size - 2])
+		'''print("pa before")
+		print(possibleActions)'''
 		rmvs = [removals.get('x' + str(idxEmpty['x'])), removals.get('y' + str(idxEmpty['y'])), removals.get('z' + str(idxEmpty['z']))] 
 		for elt in rmvs:
 			if elt != None and elt in possibleActions: #after 'and' code meant to support 3D and 2D
+				'''print("removing from pa:")
+				print(elt)'''
 				possibleActions.remove(elt)
-	
+		
+		'''if not possibleActions:
+			print("the z of the last parent")
+			print(idxEmpty['z'])
+			print("list of rmvs")
+			print(rmvs)'''
 		return possibleActions;
 
 	def createNode(self, parent, action, path_cost, depth):
-		print("in node")
-		print(path_cost)
 		idx1 = self.findEmptyTile(parent)
 
 		if action == 'up':
@@ -245,7 +313,7 @@ class Puzzle:
 
 if __name__ == '__main__':
 
-	puzzle = Puzzle(3, 2, 1);
+	puzzle = Puzzle(3, 3, 1);
 	print('initial state')
 	puzzle.PrintState(puzzle.initial)
 	#print("empty tile:")
@@ -255,13 +323,12 @@ if __name__ == '__main__':
 	#print('curstate')
 	#puzzle.PrintState(puzzle.curstate)
 	#print('possible actions')
-	stack = []
+	queue = []
 	closed_list = []
 	path_cost = 0
 	node = Node(puzzle.initial, [], '', 0, 0)
-	goal = puzzle.DFS(node, stack, closed_list, path_cost)
-
-	print("goal path cost")
-	print(goal.path_cost)
+	print(puzzle.DisplacedTilesH(node))
+	#goal = puzzle.BFS(node)
+	#dfs_goal = puzzle.DFS(node, queue, closed_list, path_cost)
 
 	

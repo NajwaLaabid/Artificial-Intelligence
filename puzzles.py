@@ -2,6 +2,11 @@
 import random
 import copy
 
+'''
+- Class Node is used to generate the nodes of the search tree
+- Every node has attributes as specified in the assignment
+'''
+
 class Node:
 	state = []
 	parent = []
@@ -16,56 +21,68 @@ class Node:
 		self.path_cost = path_cost
 		self.depth = depth
 
+'''
+- The Puzzle is basically the game instance
+- The class provides a representation of the state of the game,
+  the search strategies available, and all other auxilary functions necessary to the solving of the puzzle
+'''
 class Puzzle:
+	#dimension of puzzle (adjusted to use in functions)
+	dimension = 0
+
+	#dimension of puzzle as specified by user
+	realDimension = 0
+
+	#directionIndx
+	directionIndx = 0
+
+	#number of tiles in each face of the puzzle
 	size = 0
+	
+	#auxilary array used to create states
 	grid = []
+	
+	#the numbers making up the puzzle. Auxilary array, used to generate goal state and initial state
 	numbers = []
+	
+	#number of moves from goal to initial state
+	#difficulty level determines the number of moves (5 moves for difficulty 1, 10 moves for diff. 2....)
 	moves_array = [5, 10, 15]
+	
+	#the possible movements of a given tile
+	#the first array contains the actions for the 2D grid, and the second the actions of the 3D
 	directions = [['up', 'down', 'left', 'right'], ['up', 'down', 'left', 'right', 'front', 'back']]
+	
+	#initial state of puzzle
 	initial = []
+
+	#goal state of puzzle
 	goal = []
+
+	#current state of puzzle
 	curstate = []
 
-	def __init__(self, size, goal_choice, diff):
-		self.size = size
-		self.numbers = [i for i in range(1, size*size*size)]
+	#class contructor: creates goal state and initial state
+	def __init__(self, size, dimension, goal_choice, difficulty):
+		self.size = size 
+		self.directionIndx = dimension - 2
+		self.realDimension = dimension
+		if dimension == 2:
+			self.dimension = 1
+		else:
+			self.dimension = size	
+		self.numbers = [i for i in range(1, size**dimension)]
 		self.createGoal(goal_choice)
-		self.initState(size, self.moves_array[diff - 1])
+		self.initState(size, self.moves_array[difficulty - 1])
 
-	def move(self, idx1, idx2):
-		'''print("before move : ")
-		print(idx1)
-		print(self.curstate[self.size - idx1['z'] - 1][idx1['x']][idx1['y']])
-		print(idx2)
-		#print(idx2)'''
-		temp = copy.deepcopy(self.curstate[self.size - idx1['z'] - 1][idx1['x']][idx1['y']])
-		self.curstate[self.size - idx1['z'] - 1][idx1['x']][idx1['y']] =  copy.deepcopy(self.curstate[self.size - idx2['z'] - 1][idx2['x']][idx2['y']])
-		self.curstate[self.size - idx2['z'] - 1][idx2['x']][idx2['y']] = copy.deepcopy(temp)
-		#print('after move')
-		#print(self.curstate[self.size - idx1['z'] - 1][idx1['x']][idx1['y']])
-
-
-	def fillGrid(self):
-		i = 0
-		grid = []
-		for z in range(self.size):
-			row = []
-			for x in range(self.size):
-				cell = []
-				for y in range(self.size):
-					cell.append(self.numbers[i])
-					i += 1
-				row.append(cell)
-			grid.append(row)
-
-		return grid
-
+	#returns a goal state
+	#gives choice between 3 different goals (refer to report for details)
 	def createGoal(self, goal_choice):
 		if goal_choice == 1: #empty in bottom-right
 			self.numbers.append(0)
 			self.goal = self.fillGrid()
 		elif goal_choice == 2: #empty middle
-			size3 = self.size**3
+			size3 = self.size**self.realDimension
 			self.numbers.insert(int(size3/2) , 0)
 			self.goal = self.fillGrid()
 		elif goal_choice == 3: #reverse order, bottom-right
@@ -73,26 +90,18 @@ class Puzzle:
 			self.numbers.append(0)
 			self.goal = copy.deepcopy(self.fillGrid())
 
-	def findEmptyTile(self, state):
-		for z in range(self.size):
-			for x in range(self.size):
-				for y in range(self.size):
-					if state[z][x][y] == 0:
-						#idx = {"x" : self.size - x, "y": self.size - y, "z" : self.size - z}
-						idx = {"x" : x, "y": y, "z" : self.size - z - 1}
-						return idx
-
+	#creates an initial state by moving the empty tile 5, 10, 
+	#or 15 moves away from its goal position
 	def initState(self, size, moves):
 		i = 0	
 		self.curstate = copy.deepcopy(self.goal)
 		while(i < moves):
-			random.shuffle(self.directions[size - 2]) #first list in directions has moves for 2D
-			move = self.directions[size - 2][0]
-			print(move)
+			random.shuffle(self.directions[self.directionIndx]) #first list in directions has moves for 2D
+			move = self.directions[self.directionIndx][0]
 			#move = 'up'
 			idxTile = {}
 			idxTile = self.findEmptyTile(self.curstate)
-			if move == 'up':
+			if move == 'up':	
 				idxTile2 = idxTile.copy()
 				if idxTile2['z'] < self.size - 1: idxTile2['z'] += 1 #ignore state
 				else: i -= 1
@@ -125,33 +134,105 @@ class Puzzle:
 			i += 1
 
 		self.initial = copy.deepcopy(self.curstate)
-		print("i")
-		print(i)
 
-	def PrintState(self, state):
-		for z in state: #for now
-			print(z)
-
+	#tests if current state is a goal state
 	def testGoal(self, state):
 		if self.goal == state:
 			return 1;
 		else:
 			return 0;
 
-	def frontierNodes(self, actions, parent, path_cost, depth):
-		fn = []
-		for a in actions:
-			self.curstate = copy.deepcopy(parent)
-			fn.append(self.createNode(parent, a, path_cost, depth))
+	'''Search strategies:'''
 
-		return fn
+	#generic search 
+	def genericSearch(self, parent, algorithm, heuristic):
+		closed_list = []
+		fringe = []
+		nodes_visited = 0
+		curPNode = (parent, 0)
 
+		fringe.append(curPNode)
+		while fringe: #while stack not empty
+			total_frontier = 0
+			on_fringe = 0
+			curPNode = fringe[0]
+			if curPNode[0].operator:
+				file.write('\nAction leading to this state: ')
+				file.write(" " + curPNode[0].operator)
+			fringe.remove(curPNode)
+			closed_list.append(curPNode[0].state)
+			nodes_visited += 1
+
+			#print progress if taking too long
+			if nodes_visited % 1000 == 0:
+				file.write("Search taking too long. Showing progress in every 1000 nodes...\n")
+				file.write("current state\n")
+				self.PrintState(curPNode[0].state)
+				file.write("closed_list size:\n")
+				file.write(str(len(closed_list)))
+				file.write("\nfringe size:\n")
+				file.write(str(len(fringe)))
+				x = input("\nWould you like to continue? (Y/N)\n")
+				file.write("\nWould you like to continue? (Y/N):" + x + "\n")
+				if x == 'N':
+					file.write("\nProgram terminated. Goal not found (yet :D)\n")
+					return 0
+
+			actions = self.frontierActions(curPNode[0].state) #generate possible actions from parent
+			frontier = self.frontierNodes(actions, curPNode[0].state, curPNode[0].path_cost + 1,  curPNode[0].path_cost + 1) #check parent to avoid loops
+			total_frontier += len(frontier)
+			for n in frontier:
+				total_frontier += 1
+				if self.testGoal(n.state):
+					file.write("\nAction: ")
+					file.write(n.operator)
+					file.write("\nGoal reached by " + algorithm + "\n")
+					self.PrintState(n.state)
+					file.write("\nnodes visited: ")
+					file.write(str(nodes_visited))
+					return n
+				elif n.state not in closed_list:
+					on_fringe += 1
+					if algorithm == 'DFS':
+						fringe = self.DFS(n, fringe)
+					elif algorithm == 'BFS':
+						fringe = self.BFS(n, fringe)
+					elif algorithm == 'Greedy':
+						fringe = self.greedyBestFirst(n, fringe, heuristic)
+					elif algorithm == 'AStar':
+						fringe = self.AStar(n, fringe, heuristic)
+						
+			file.write("\nPossible children for current node: ")
+			file.write(str(total_frontier))
+			file.write("\nChildren not in closed_list: ")
+			file.write(str(on_fringe))
+			percent_frontier_expanded = (on_fringe / total_frontier) * 100
+			file.write("\nPercent of expanded nodes: ")
+			file.write(str(percent_frontier_expanded) + "\n")
+
+		return parent
+	
+	#uninformed search algorithms
+	def BFS(self, n, fringe):
+		#append in queue in fringe
+		pNode = (n, 0)
+		fringe.append(pNode)
+
+		return fringe
+
+	def DFS(self, n, fringe):
+		pNode = (n, 0)
+		fringe.insert(0, pNode)
+
+		return fringe
+
+	#Heuristics
 	def DisplacedTilesH(self, node):
 		cnt = 0
 
 		for z in range(self.size):
-			for y in range(self.size):
-				for x in range(self.size):
+			for x in range(self.size):
+				for y in range(self.dimension):
 					if node.state[z][x][y] != self.goal[z][x][y]:
 						cnt += 1
 
@@ -160,126 +241,46 @@ class Puzzle:
 	def ManhattanDistanceH(self, node):
 		md = 0
 		for z in range(self.size):
-			for y in range(self.size):
-				for x in range(self.size):
-					if node.state[z][x][y] != self.goal[z][x][y]:
-						md +=  
+			for x in range(self.size):
+				for y in range(self.dimension):
+					elt = self.goal[z][x][y]
+					idx1 = copy.deepcopy(self.idxEltState(node.state, elt))
+					md += abs(z - idx1['z']) + abs(y - idx1['y']) + abs(x - idx1['x'])
 
+		return md - 1
 
+	'''	
+	def patternDatabase(self, initState, ):
+		for z in range(self.size)/2:
+			for y in range(self.size)/2:
+				for x in range(self.size)/2:'''
 
-	def BFS(self, parent):
-		closed_list = []
-		queue = []
-		path_cost = 0
+	#informed search alogirthms:
+	def AStar(self, n, fringe, heuristic):
+		if heuristic == 'MD':
+			h = self.ManhattanDistanceH(n) + n.path_cost
+		elif heuristic == 'DT':
+			h = self.DisplacedTilesH(n) + n.path_cost
 
-		queue.append(parent)
+		pNode = (n, h)
+		fringe = self.addToPriorityQ(fringe, pNode)
 
-		while queue: #while queue not empty
-			print(path_cost)
-			closed_list.append(parent)
-			if self.testGoal(parent.state):
-				print("Goal reached by BFS")
-				self.PrintState(parent.state)
-				print("nodes visited")
-				print(path_cost)
-				return parent
-			else:
-				path_cost += 1 
-				actions = self.frontierActions(parent.state) #generate possible actions from parent
-				frontier = self.frontierNodes(actions, parent.state, path_cost, path_cost) #check parent to avoid loops
-				for n in frontier:
-					if n not in closed_list:
-						queue.append(n)
-				if queue:
-					parent = copy.deepcopy(queue[0])
-					queue.remove(queue[0])
-		'''
-		print("last parent")
-		self.PrintState(parent.state)
-		actions = copy.deepcopy(self.frontierActions(parent.state)) #generate possible actions from parent
-		print("possible actions for last parent")
-		print(actions)
-		frontier = copy.deepcopy(self.frontierNodes(actions, parent.state, path_cost, path_cost)) #check parent to avoid loops
-		print("possible children of last parent")
-		for n in frontier:
-			self.PrintState(n.state)
+		return fringe
 
-		print("not goal. path_cost")
-		print(path_cost)'''
+	def greedyBestFirst(self, n, fringe, heuristic):
+		if heuristic == 'MD':
+			h = self.ManhattanDistanceH(n)
+		elif heuristic == 'DT':
+			h = self.DisplacedTilesH(n)
 
-	def DFS(self, parent, stack, closed_list, path_cost):
+		pNode = (n, h)
+		fringe = self.addToPriorityQ(fringe, pNode)
 
-		#general search algo 
-		#initial state => possible actions => nodes => building tree
-		#run DFS on tree => stack managing frontier => call testGoal on each node 
-		#=> recursive function
-		#careful with computation
-		
-		#assumption:
-		#our algorithm works with the idea that a goal exists (existence guaranteed)
-		#and is not too far off any initial state (5, 10, or 15 moves away)
+		return fringe			
 
-		#questions:
-		#path cost same as depth in DFS
-		'''print("closed_list")
-		for c in closed_list:
-			self.PrintState(c)'''
-		closed_list.append(parent);
-		
-		path_cost += 1
-		print("cost")
-		print(path_cost)
-		flag = 0
-		#base case 
-		#print(self.testGoal(parent))
-		if self.testGoal(parent.state):
-			return parent
+	'''auxilary search functions:'''
 
-		#recursive algo
-		else:
-			actions = copy.deepcopy(self.frontierActions(parent.state))#generate possible actions from parent
-			frontier = copy.deepcopy(self.frontierNodes(actions, parent.state, path_cost, path_cost)) #check parent to avoid loops
-			print("parent: ")
-			self.PrintState(parent.state)
-			print("children: ")
-			for n in frontier: 
-				if n not in closed_list:
-					flag = 1
-					print(n.operator)
-					self.PrintState(n.state)
-					stack.append(n)
-				else:
-					parent.path_cost += 1
-			#if parent already visited pop next
-			if not stack:
-				return parent
-			parent = copy.deepcopy(stack.pop())
-			return self.DFS(parent, stack, closed_list, path_cost)
-
-
-	def frontierActions(self, state):
-		idxEmpty = self.findEmptyTile(state) 
-		#list of possible moves given position of empty tile
-		removals = {'x0': 'left', 'x2': 'right', 'x3': 'right', 
-					'y0': 'front', 'y2' : 'back', 'y3': 'back',
-					'z0' : 'down', 'z2': 'up', 'z3' : 'up'}
-		possibleActions  = copy.deepcopy(self.directions[self.size - 2])
-		'''print("pa before")
-		print(possibleActions)'''
-		rmvs = [removals.get('x' + str(idxEmpty['x'])), removals.get('y' + str(idxEmpty['y'])), removals.get('z' + str(idxEmpty['z']))] 
-		for elt in rmvs:
-			if elt != None and elt in possibleActions: #after 'and' code meant to support 3D and 2D
-				'''print("removing from pa:")
-				print(elt)'''
-				possibleActions.remove(elt)
-		
-		'''if not possibleActions:
-			print("the z of the last parent")
-			print(idxEmpty['z'])
-			print("list of rmvs")
-			print(rmvs)'''
-		return possibleActions;
-
+	#returns a node
 	def createNode(self, parent, action, path_cost, depth):
 		idx1 = self.findEmptyTile(parent)
 
@@ -310,25 +311,131 @@ class Puzzle:
 
 		return Node(self.curstate, parent, action, path_cost, depth)
 
+	#returns all possible next moves for a given state
+	def frontierActions(self, state):
+		idxEmpty = self.findEmptyTile(state) 
+		#list of possible moves given position of empty tile
+		removals = {'x0': 'left', 'x2': 'right', 'x3': 'right', 
+					'y0': 'front', 'y2' : 'back', 'y3': 'back',
+					'z0' : 'down', 'z2': 'up', 'z3' : 'up'}
+		possibleActions  = copy.deepcopy(self.directions[self.directionIndx])
+		rmvs = [removals.get('x' + str(idxEmpty['x'])), removals.get('y' + str(idxEmpty['y'])), removals.get('z' + str(idxEmpty['z']))] 
+		for elt in rmvs:
+			if elt != None and elt in possibleActions: #after 'and' code meant to support 3D and 2D
+				possibleActions.remove(elt)
+		return possibleActions;
+
+	#returns all possible "children" nodes of a given parent
+	#uses frontier actions returned by previous function to generate nodes
+	def frontierNodes(self, actions, parent, path_cost, depth):
+		fn = []
+		for a in actions:
+			self.curstate = copy.deepcopy(parent)
+			fn.append(self.createNode(parent, a, path_cost, depth))
+
+		return fn
+
+	#used in AStar and Best First searches
+	#adds a new node to the priorityQ depending on the value of its heuristic
+	def addToPriorityQ(self, priorityQ, n):
+		idx = 0
+		if not priorityQ:
+			idx = 1
+
+		for p in priorityQ:
+			if p[1] < n[1]:
+				#print("in for loop")
+				idx = priorityQ.index(p)
+
+		if idx == 0:
+			idx = len(priorityQ)
+		
+		priorityQ.insert(idx - 1, n) #before p
+
+		return priorityQ
+
+	''' general auxilary functions'''
+	
+	#returns the index of an empty tile 
+	def findEmptyTile(self, state):
+		for z in range(self.size):
+			for x in range(self.size):
+				for y in range(self.dimension):
+					if state[z][x][y] == 0:
+						idx = {"x" : x, "y": y, "z" : self.size - z - 1}
+						return idx
+
+	#returns index of an given element in a given state
+	def idxEltState(self, state, elt):
+		for z in range(self.size):
+			for x in range(self.size):
+				for y in range(self.dimension):
+					if state[z][x][y] == elt:
+						#no need to adjust z cause only used to get difference
+						idx = {'z': z, 'y': y, 'x': x} 
+						return idx
+
+	#used to swap two tiles (make a move)
+	def move(self, idx1, idx2):
+		temp = copy.deepcopy(self.curstate[self.size - idx1['z'] - 1][idx1['x']][idx1['y']])
+		self.curstate[self.size - idx1['z'] - 1][idx1['x']][idx1['y']] =  copy.deepcopy(self.curstate[self.size - idx2['z'] - 1][idx2['x']][idx2['y']])
+		self.curstate[self.size - idx2['z'] - 1][idx2['x']][idx2['y']] = copy.deepcopy(temp)
+
+	#create grid from array of numbers
+	def fillGrid(self):
+		i = 0
+		grid = []
+		for z in range(self.size):
+			row = []
+			for x in range(self.size):
+				cell = []
+				for y in range(0, self.dimension):
+					cell.append(self.numbers[i])
+					i += 1
+				row.append(cell)
+			grid.append(row)
+
+		return grid
+
+	#prints a given state
+	def PrintState(self, state):
+		for z in state: #for now
+			file.write(str(z))
+			file.write("\n")
 
 if __name__ == '__main__':
 
-	puzzle = Puzzle(3, 3, 1);
-	print('initial state')
-	puzzle.PrintState(puzzle.initial)
-	#print("empty tile:")
-	#print(puzzle.findEmptyTile(puzzle.initial))
-	print('goal state')
-	puzzle.PrintState(puzzle.goal)
-	#print('curstate')
-	#puzzle.PrintState(puzzle.curstate)
-	#print('possible actions')
-	queue = []
-	closed_list = []
-	path_cost = 0
-	node = Node(puzzle.initial, [], '', 0, 0)
-	print(puzzle.DisplacedTilesH(node))
-	#goal = puzzle.BFS(node)
-	#dfs_goal = puzzle.DFS(node, queue, closed_list, path_cost)
+	print("*********** Menu ****************")
+	print("Please choose your settings: ")
+	dimension = int(input("Dimension (2 or 3): "))
+	size = int(input("Size (3 or 4): "))
+	goal = int(input("Goal choice (1, 2 or 3): "))
+	difficulty = int(input("Difficulty level (1, 2 or 3): "))
+	algorithm = input("Algorithm to use for search (BFS, DFS, AStar, Greedy): ")
 
+	file = open("Greedy4.txt", "w")
+
+	file.write("Dimension (2 or 3):" + str(dimension) + "\n")
+	file.write("Size (3 or 4):" + str(size) + "\n")
+	file.write("Goal choice (1, 2 or 3):" + str(goal) + "\n")
+	file.write("Difficulty level (1, 2 or 3):" + str(difficulty) + "\n")
+	file.write("Algorithm to use for search (BFS, DFS, AStar, Greedy):" + algorithm + "\n")
 	
+	puzzle = Puzzle(size, dimension, goal, difficulty);
+	file.write("\n This is your goal state:\n")
+	puzzle.PrintState(puzzle.goal)
+	file.write("This is your initial state:\n")
+	puzzle.PrintState(puzzle.initial)
+
+	parent = []
+	operator = ''
+	node = Node(puzzle.initial, parent, operator, 0, 0)
+
+	heuristic = " "
+
+	if algorithm == "AStar" or algorithm == "Greedy":
+		heuristic = input("Input heuristic (MD for Manhattan Distance, DT for Displaced Tiles): ")
+		file.write("Input heuristic (MD for Manhattan Distance, DT for Displaced Tiles):" + heuristic + "\n")
+
+	file.write("Searching...\n\n")
+	puzzle.genericSearch(node, algorithm, heuristic)
